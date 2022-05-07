@@ -13,8 +13,8 @@
 #include <Servo.h>
 
 struct Sensor {
-  String time = "";
-  int value = 0;
+  String time[200] = {};
+  int value[200] = {};
 };
 
 //Blynk Authontication Token
@@ -39,6 +39,7 @@ struct Sensor Humidity;
 int networkNumber = 0;
 int triesNumToConnect = 0;
 bool isConnected = false;
+int DHT_Buffer_Counter=0;
 // setup sensors pins
 const int motionSensor = D5; // PIR Motion Sensor Pin
 bool motionDetected = false; // PIR Motion Sensor state
@@ -174,11 +175,11 @@ void sendDHTSensorReadings() {
     return;
   }
   if (isConnected == true) {
+    //if(){
     Serial.println("in sending mode (debugging)");
-
     showingSensorBufferData(Temperature);
     showingSensorBufferData(Humidity);
-
+    //}
     Blynk.virtualWrite(V2, h);
     Blynk.virtualWrite(V3, t);
   } else {
@@ -259,20 +260,23 @@ void setup() {
 
 // insert  Into Sensor Buffer
 struct Sensor insertIntoSensorBuffer(struct Sensor sensor, String time, int value) {
-  sensor.time = time;
-  sensor.value = value;
+  sensor.time[DHT_Buffer_Counter] = time;
+  sensor.value[DHT_Buffer_Counter] = value;
+  DHT_Buffer_Counter++;
   return sensor;
 }
 // showing Sensor Buffer Data
 void showingSensorBufferData(struct Sensor sensor) {
+  for(int i=0; i< DHT_Buffer_Counter;i++){
   Serial.print("time = ");
-  Serial.print(sensor.time);
+  Serial.print(sensor.time[i]);
   Serial.print(", value = ");
-  Serial.println(sensor.value);
+  Serial.println(sensor.value[i]);
+  }
 }
 
 unsigned long previousMillis = 0;
-unsigned long interval = 30000;
+unsigned long interval = 3000;
 //loop fuction that infinitly repeats itself
 void loop() {
   unsigned long currentMillis = millis();
