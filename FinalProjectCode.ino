@@ -175,11 +175,11 @@ void sendDHTSensorReadings() {
     return;
   }
   if (isConnected == true) {
-    //if(){
+    if(DHT_Buffer_Counter !=0){
     Serial.println("in sending mode (debugging)");
     showingSensorBufferData(Temperature);
     showingSensorBufferData(Humidity);
-    //}
+    }
     Blynk.virtualWrite(V2, h);
     Blynk.virtualWrite(V3, t);
   } else {
@@ -273,6 +273,7 @@ void showingSensorBufferData(struct Sensor sensor) {
   Serial.print(", value = ");
   Serial.println(sensor.value[i]);
   }
+  DHT_Buffer_Counter=0;
 }
 
 unsigned long previousMillis = 0;
