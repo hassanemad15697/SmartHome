@@ -8,11 +8,8 @@
 
 //used libraries
 #include <ESP8266WiFi.h>
-
 #include <BlynkSimpleEsp8266.h>
-
 #include <DHT.h>
-
 #include <Servo.h>
 
 struct Sensor {
@@ -81,6 +78,7 @@ void onWifiConnect(const WiFiEventStationModeGotIP & event) {
   Serial.println("Connected to Wi-Fi sucessfully.");
   Serial.print("IP address: ");
   Serial.println(WiFi.localIP());
+  isConnected=true;
   triesNumToConnect = 0;
 }
 
@@ -282,7 +280,7 @@ void loop() {
   if ((WiFi.status() != WL_CONNECTED) && (currentMillis - previousMillis >= interval)) {
     Serial.println("");
     Serial.println("Failed to connect to Wi-Fi, trying to reconnect...");
-    isConnected = true;
+    isConnected = false;
     WiFi.disconnect();
     triesNumToConnect++;
     if (triesNumToConnect < 4) {
