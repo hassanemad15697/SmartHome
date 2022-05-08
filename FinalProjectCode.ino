@@ -34,6 +34,7 @@ int arrSize = sizeof(ssid) / sizeof(ssid[0]);
 
 // Events for Connecting and Disconnecting modes
 WiFiEventHandler wifiConnectHandler;
+WiFiEventHandler wifiDisconnectHandler;
 struct Sensor Temperature;
 struct Sensor Humidity;
 int networkNumber = 0;
@@ -74,14 +75,40 @@ void initWiFi() {
 }
 
 // method to handle connected case
-
-void onWifiConnect(const WiFiEventStationModeGotIP & event) {
+ 
+void onWifiConnect(const WiFiEventStationModeGotIP& event) {
   Serial.println("Connected to Wi-Fi sucessfully.");
   Serial.print("IP address: ");
   Serial.println(WiFi.localIP());
-  isConnected=true;
-  triesNumToConnect = 0;
+  triesNumToConnect=0;
 }
+
+void onWifiDisconnect(const WiFiEventStationModeDisconnected& event) {
+  Serial.println("");
+  Serial.println("Failed to connect to Wi-Fi, trying to reconnect...");  
+  WiFi.disconnect();
+  triesNumToConnect++;
+  if(triesNumToConnect < 4){
+    Serial.print("try number : "); 
+    Serial.println(triesNumToConnect); 
+    WiFi.begin(ssid[networkNumber], password[networkNumber]);
+  }else{
+    Serial.println("Try to connect anthor network ..."); 
+    
+    networkNumber++;
+    
+    if(networkNumber >= arrSize){
+      networkNumber=0;
+    }
+      
+    triesNumToConnect=0;
+    
+    Serial.print("try Connecting to ");
+    Serial.println(ssid[networkNumber]);
+    WiFi.begin(ssid[networkNumber], password[networkNumber]);
+  }
+}
+
 
 //control of Built-In Led
 BLYNK_WRITE(V0) {
@@ -174,19 +201,9 @@ void sendDHTSensorReadings() {
     Serial.println("Failed to read from DHT sensor!");
     return;
   }
-  if (isConnected == true) {
-    if(DHT_Buffer_Counter !=0){
-    Serial.println("in sending mode (debugging)");
-    showingSensorBufferData(Temperature);
-    showingSensorBufferData(Humidity);
-    }
     Blynk.virtualWrite(V2, h);
     Blynk.virtualWrite(V3, t);
-  } else {
-    Serial.println("in buffering mode (debugging)");
-    Temperature = insertIntoSensorBuffer(Temperature, "11:40", t);
-    Humidity = insertIntoSensorBuffer(Humidity, "11:40", h);
-  }
+  
 }
 //Getting the status of the buttons and sensors
 void updateSystemStatus() {
@@ -239,6 +256,7 @@ void setup() {
   pinMode(flame, INPUT);
   //Register event handlers
   wifiConnectHandler = WiFi.onStationModeGotIP(onWifiConnect);
+  wifiDisconnectHandler = WiFi.onStationModeDisconnected(onWifiDisconnect);
   initWiFi();
   Blynk.config(auth);
   while (Blynk.connect() == false) {
@@ -258,59 +276,9 @@ void setup() {
   attachInterrupt(digitalPinToInterrupt(motionSensor), detectsMovement, RISING);
 }
 
-// insert  Into Sensor Buffer
-struct Sensor insertIntoSensorBuffer(struct Sensor sensor, String time, int value) {
-  sensor.time[DHT_Buffer_Counter] = time;
-  sensor.value[DHT_Buffer_Counter] = value;
-  DHT_Buffer_Counter++;
-  return sensor;
-}
-// showing Sensor Buffer Data
-void showingSensorBufferData(struct Sensor sensor) {
-  for(int i=0; i< DHT_Buffer_Counter;i++){
-  Serial.print("time = ");
-  Serial.print(sensor.time[i]);
-  Serial.print(", value = ");
-  Serial.println(sensor.value[i]);
-  }
-  DHT_Buffer_Counter=0;
-}
 
-unsigned long previousMillis = 0;
-unsigned long interval = 3000;
 //loop fuction that infinitly repeats itself
 void loop() {
-  unsigned long currentMillis = millis();
-  // if WiFi is down, try reconnecting every CHECK_WIFI_TIME seconds
-  if ((WiFi.status() != WL_CONNECTED) && (currentMillis - previousMillis >= interval)) {
-    Serial.println("");
-    Serial.println("Failed to connect to Wi-Fi, trying to reconnect...");
-    isConnected = false;
-    WiFi.disconnect();
-    triesNumToConnect++;
-    if (triesNumToConnect < 4) {
-      Serial.print("try number : ");
-      Serial.println(triesNumToConnect);
-      WiFi.begin(ssid[networkNumber], password[networkNumber]);
-      Serial.println(WiFi.localIP());
-    } else {
-      Serial.println("Try to connect anthor network ...");
-
-      networkNumber++;
-
-      if (networkNumber >= arrSize) {
-        networkNumber = 0;
-      }
-
-      triesNumToConnect = 0;
-
-      Serial.print("try Connecting to ");
-      Serial.println(ssid[networkNumber]);
-      WiFi.begin(ssid[networkNumber], password[networkNumber]);
-      Serial.println(WiFi.localIP());
-      previousMillis = currentMillis;
-    }
-  }
   /////////////////////////////////////////////////////
   //Start Blynk Server and its timer
   Blynk.run();
